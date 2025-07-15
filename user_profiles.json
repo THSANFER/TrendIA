@@ -1,0 +1,14 @@
+{
+    "Empresário de Brindes": {
+        "w1_innovation": 0.5,
+        "w2_price": 0.5
+    },
+    "Loja de Presentes para Festas": {
+        "w1_innovation": 0.5,
+        "w2_price": 0.5
+    },
+    "Consumidor Final": {
+        "w1_innovation": 0.5,
+        "w2_price": 0.5
+    }
+}

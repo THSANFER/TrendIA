@@ -1,0 +1,6 @@
+streamlit
+requests
+beautifulsoup4
+spacy
+Flask
+Flask-Cors
