@@ -1,14 +1,14 @@
 {
     "Empresário de Brindes": {
-        "w1_innovation": 0.5,
-        "w2_price": 0.5
+        "w1_innovation": 0.6015037593984962,
+        "w2_price": 0.3984962406015038
     },
     "Loja de Presentes para Festas": {
-        "w1_innovation": 0.5,
-        "w2_price": 0.5
+        "w1_innovation": 0.5251223296336078,
+        "w2_price": 0.47487767036639217
     },
     "Consumidor Final": {
-        "w1_innovation": 0.5,
-        "w2_price": 0.5
+        "w1_innovation": 0.27839856307365657,
+        "w2_price": 0.7216014369263434
     }
 }
