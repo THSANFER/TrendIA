@@ -1,113 +1,72 @@
-# main_llm_collector.py
-import google.generativeai as genai
-import datetime
+# learning_engine.py
 import json
-import database
-import time
 import os
 
-# --- CONFIGURAÇÃO CENTRAL ---
+FEEDBACK_FILE = 'feedback.json'
+PROFILES_FILE = 'user_profiles.json'
+PRODUCTS_FILE = 'products_history.json' # Aponta para o novo nome do arquivo
+LEARNING_RATE = 0.05
 
-# Cole sua API Key do Google AI Studio aqui. 
-# É mais seguro usar variáveis de ambiente: GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GOOGLE_API_KEY = "AIzaSyCr77EwSHserX4vg0SOdHg2SvbCQbzCDZk"
-
-# Define os tópicos de busca para o LLM
-SEARCH_QUERIES = [
-    "presentes criativos para millennials",
-    "lembrancinhas de casamento personalizadas e modernas",
-    "decoração de festa infantil com tema de espaço",
-    "brindes corporativos de tecnologia e sustentáveis"
-]
-
-def configure_llm():
-    """Configura a API do Google AI."""
+def load_json_file(filepath, default_data={}):
+    if not os.path.exists(filepath): return default_data
     try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        return model
-    except Exception as e:
-        print(f"Erro ao configurar a API do Google: {e}")
-        return None
+        with open(filepath, 'r', encoding='utf-8') as f: return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError): return default_data
 
-def generate_product_ideas(model, query):
-    """Envia um prompt para o LLM e pede para ele gerar uma lista de produtos."""
-    print(f"Gerando ideias de produtos para: '{query}'...")
+def save_json_file(filepath, data):
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+def update_weights_from_feedback():
+    feedback_log = load_json_file(FEEDBACK_FILE, default_data=[])
+    user_profiles = load_json_file(PROFILES_FILE, default_data={
+        "Empresário de Brindes": {"w1_innovation": 0.5, "w2_price": 0.5},
+        "Loja de Presentes para Festas": {"w1_innovation": 0.5, "w2_price": 0.5},
+        "Consumidor Final": {"w1_innovation": 0.5, "w2_price": 0.5}
+    })
+    all_products = load_json_file(PRODUCTS_FILE)
     
-    prompt = f"""
-    Aja como um especialista em tendências de produtos e e-commerce.
-    Sua tarefa é gerar uma lista de 5 ideias de produtos inovadores e interessantes baseados na busca: "{query}".
-
-    Para cada produto, forneça as seguintes informações em formato JSON, dentro de uma lista JSON:
-    - "product_name": O nome do produto.
-    - "description": Uma descrição curta, criativa e atrativa (máximo 2 frases).
-    - "estimated_price_brl": Uma estimativa de preço de venda em Reais (BRL), apenas o número (ex: 79.90).
-    - "target_audience": O público-alvo principal.
-    - "innovation_factor": Um breve motivo pelo qual este produto é considerado inovador.
-
-    Exemplo de formato de saída para um único produto:
-    {{
-      "product_name": "Luminária de Lua 3D Personalizada",
-      "description": "Uma réplica da lua impressa em 3D que pode ser personalizada com uma foto e texto. Perfeita para criar um ambiente aconchegante e único.",
-      "estimated_price_brl": 149.90,
-      "target_audience": "Casais, amantes de astronomia, decoração de casa",
-      "innovation_factor": "Combina impressão 3D, personalização e iluminação decorativa."
-    }}
-
-    Retorne APENAS a lista JSON, sem nenhum texto ou explicação adicional.
-    """
-
-    try:
-        response = model.generate_content(prompt)
-        json_response_text = response.text.strip().replace("```json", "").replace("```", "")
-        product_ideas = json.loads(json_response_text)
-        return product_ideas
-    except (json.JSONDecodeError, Exception) as e:
-        print(f"Erro ao processar a resposta do LLM: {e}")
-        print(f"Resposta recebida: {response.text}")
-        return None
-
-def format_product_for_db(product_idea):
-    """Formata a ideia de produto para o nosso padrão de banco de dados."""
-    google_search_link = f"https://www.google.com/search?tbm=shop&q={product_idea.get('product_name', '').replace(' ', '+')}"
-    
-    return {
-        'product_url': google_search_link,
-        'title': product_idea.get('product_name', 'Produto Sem Nome'),
-        'description': product_idea.get('description', ''),
-        'price_brl': product_idea.get('estimated_price_brl', 0.0),
-        'image_url': 'https://via.placeholder.com/300x300.png?text=Produto+Gerado',
-        'source': 'Gerado por IA (Gemini)',
-        'scraped_at': datetime.datetime.now().isoformat(),
-        'innovation_score': None
-    }
-
-def main_collection_cycle():
-    """Ciclo principal que itera sobre as queries, gera ideias e as salva."""
-    print(f"\n[{datetime.datetime.now()}] +++ INICIANDO CICLO DE GERAÇÃO DE PRODUTOS COM IA +++")
-    
-    model = configure_llm()
-    if not model:
+    if not feedback_log or not all_products:
+        print("Aprendizado adiado: sem feedbacks ou histórico de produtos.")
         return
 
-    all_collected_products = []
-    for query in SEARCH_QUERIES:
-        product_ideas = generate_product_ideas(model, query)
-        if product_ideas:
-            for idea in product_ideas:
-                formatted_product = format_product_for_db(idea)
-                all_collected_products.append(formatted_product)
-            print(f"Sucesso! {len(product_ideas)} ideias geradas para '{query}'.")
-        time.sleep(2)
+    # Para evitar importar o agent_core, duplicamos a função de score aqui.
+    INNOVATION_KEYWORDS = ['smart', 'inteligente', 'interativo', 'customizado', 'personalizado', '3d', 'led', 'tech', 'digital', 'inovador', 'diferente', 'moderno', 'sustentável', 'conectado']
+    def calculate_innovation_score(product):
+        score = 0
+        text_to_analyze = (product.get('title', '') + ' ' + product.get('description', '')).lower()
+        for keyword in INNOVATION_KEYWORDS:
+            if keyword in text_to_analyze: score += 1
+        return score
 
-    if all_collected_products:
-        database.save_products(all_collected_products)
-        print(f"\n+++ CICLO CONCLUÍDO. Total de {len(all_collected_products)} produtos gerados e salvos. +++")
-    else:
-        print("\n+++ CICLO CONCLUÍDO. Nenhum produto foi gerado. +++")
+    for feedback in feedback_log:
+        user_profile, product_url, action = feedback.get('user_id'), feedback.get('product_url'), feedback.get('action')
+        if user_profile not in user_profiles or product_url not in all_products: continue
 
-if __name__ == '__main__':
-    if GOOGLE_API_KEY == "SUA_CHAVE_DE_API_DO_GOOGLE_AI_STUDIO":
-        print("ERRO: Por favor, adicione sua API Key do Google AI Studio na variável GOOGLE_API_KEY.")
-    else:
-        main_collection_cycle()
+        product = all_products[product_url]
+        has_high_innovation = calculate_innovation_score(product) > 0
+        adjustment = LEARNING_RATE if action == 'like' else -LEARNING_RATE
+        
+        current_weights = user_profiles[user_profile]
+        if has_high_innovation: current_weights['w1_innovation'] += adjustment
+        else: current_weights['w2_price'] += adjustment
+
+        current_weights['w1_innovation'] = max(0.01, min(0.99, current_weights['w1_innovation']))
+        current_weights['w2_price'] = max(0.01, min(0.99, current_weights['w2_price']))
+        total_weight = current_weights['w1_innovation'] + current_weights['w2_price']
+        current_weights['w1_innovation'] /= total_weight
+        current_weights['w2_price'] /= total_weight
+        user_profiles[user_profile] = current_weights
+
+    save_json_file(PROFILES_FILE, user_profiles)
+    save_json_file(FEEDBACK_FILE, [])
+    print("Pesos dos perfis atualizados com sucesso e log de feedback limpo.")
+
+def get_user_weights(user_profile):
+    user_profiles = load_json_file(PROFILES_FILE, default_data={
+        "Empresário de Brindes": {"w1_innovation": 0.5, "w2_price": 0.5},
+        "Loja de Presentes para Festas": {"w1_innovation": 0.5, "w2_price": 0.5},
+        "Consumidor Final": {"w1_innovation": 0.5, "w2_price": 0.5}
+    })
+    profile_data = user_profiles.get(user_profile, {"w1_innovation": 0.5, "w2_price": 0.5})
+    return {"w1": profile_data['w1_innovation'], "w2": profile_data['w2_price']}
