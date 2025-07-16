@@ -24,7 +24,7 @@ def _generate_ideas_from_llm(model, user_prompt):
     print(f"Gerando ideias de produtos em tempo real para: '{user_prompt}'...")
     prompt = f"""
     Aja como um especialista em tendências de produtos.
-    Gere uma lista de 8 ideias de produtos inovadores baseados na busca: "{user_prompt}".
+    Gere uma lista de 12 ideias de produtos inovadores baseados na busca: "{user_prompt}".
 
     Para cada produto, retorne um objeto JSON com: "product_name", "description" e "estimated_price_brl".
     Retorne APENAS uma lista de objetos JSON.
