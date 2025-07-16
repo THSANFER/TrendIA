@@ -5,7 +5,7 @@ import json
 import os
 
 # --- CONFIGURAÇÃO DA API ---
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyCr77EwSHserX4vg0SOdHg2SvbCQbzCDZk")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyDP98kkMB5QQgf_xg5AGcPKjhYAS7srnUg")
 
 INNOVATION_KEYWORDS = ['smart', 'inteligente', 'interativo', 'customizado', 'personalizado', '3d', 'led', 'tech', 'digital', 'inovador', 'diferente', 'moderno', 'sustentável', 'conectado']
 
