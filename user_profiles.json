@@ -1,23 +1,15 @@
 {
-    "Muita Inovação": {
-        "w1_innovation": 0.9,
-        "w2_price": 0.1
-    },
-    "Mais Inovação": {
-        "w1_innovation": 0.7,
-        "w2_price": 0.3
-    },
-    "Meio a Meio": {
+    "Equilibrado": {
         "w1_innovation": 0.5,
         "w2_price": 0.5
     },
-    "Mais Custo Benefício": {
+    "Foco em Inovação": {
+        "w1_innovation": 0.7,
+        "w2_price": 0.3
+    },
+    "Foco em Custo-Benefício": {
         "w1_innovation": 0.3,
         "w2_price": 0.7
-    },
-    "Muito Custo Benefício": {
-        "w1_innovation": 0.2,
-        "w2_price": 0.8
     
     }
 }
