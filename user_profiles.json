@@ -1,14 +1,23 @@
 {
-    "Empresário de Brindes": {
-        "w1_innovation": 0.6015037593984962,
-        "w2_price": 0.3984962406015038
+    "Muita Inovação": {
+        "w1_innovation": 0.9,
+        "w2_price": 0.1
     },
-    "Loja de Presentes para Festas": {
-        "w1_innovation": 0.5251223296336078,
-        "w2_price": 0.47487767036639217
+    "Mais Inovação": {
+        "w1_innovation": 0.7,
+        "w2_price": 0.3
     },
-    "Consumidor Final": {
-        "w1_innovation": 0.27839856307365657,
-        "w2_price": 0.7216014369263434
+    "Meio a Meio": {
+        "w1_innovation": 0.5,
+        "w2_price": 0.5
+    },
+    "Mais Custo Benefício": {
+        "w1_innovation": 0.3,
+        "w2_price": 0.7
+    },
+    "Muito Custo Benefício": {
+        "w1_innovation": 0.2,
+        "w2_price": 0.8
+    
     }
 }
