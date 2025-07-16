@@ -14,8 +14,8 @@ st.sidebar.title("🚀 TrendIA")
 st.sidebar.caption("Controles do Agente de IA")
 
 user_profile = st.sidebar.selectbox(
-    "Selecione seu perfil de usuário:",
-    ("Empresário de Brindes", "Loja de Presentes para Festas", "Consumidor Final")
+    "Selecione a forma da pesquisa:",
+    ("Muita Inovação", "Mais Inovação", "Meio a Meio", "Mais Custo Benefício", "Muito Custo Benefício")
 )
 
 # Carrega os pesos aprendidos ou padrão
