@@ -1,7 +1,8 @@
 # db_manager.py
 import sqlite3
 import json
-import datetime
+from datetime import datetime
+import pytz # Biblioteca para lidar com fusos horários
 import os
 
 DB_NAME = 'trendia.db'
@@ -52,11 +53,12 @@ def setup_database():
         )
     ''')
     
+    # A coluna 'timestamp' agora é TEXT e não tem mais um valor padrão
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS search_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             prompt TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            timestamp TEXT NOT NULL
         )
     ''')
     
@@ -143,13 +145,23 @@ def clear_feedback_log():
     conn.close()
 
 def save_search_prompt(prompt):
-    """Salva um prompt de busca bem-sucedido no histórico."""
+    """Salva um prompt de busca com o timestamp local correto."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO search_history (prompt) VALUES (?)", (prompt,))
+    
+    # Define o fuso horário de São Paulo
+    fuso_horario_brasil = pytz.timezone('America/Sao_Paulo')
+    # Pega a hora atual neste fuso horário
+    agora_no_brasil = datetime.now(fuso_horario_brasil)
+    # Formata como uma string no padrão ISO 8601 (ex: '2023-10-27T10:30:00.123456-03:00')
+    timestamp_str = agora_no_brasil.isoformat()
+
+    # Insere o prompt E o timestamp gerado pelo Python
+    cursor.execute("INSERT INTO search_history (prompt, timestamp) VALUES (?, ?)", (prompt, timestamp_str))
+    
     conn.commit()
     conn.close()
-    print(f"Prompt '{prompt}' salvo no histórico.")
+    print(f"Prompt '{prompt}' salvo no histórico com o horário local.")
 
 def get_search_history(limit=25):
     """Retorna uma lista dos prompts de busca mais recentes, incluindo seus IDs."""
