@@ -2,7 +2,7 @@
 import sqlite3
 import json
 from datetime import datetime
-import pytz # Biblioteca para lidar com fusos horários
+import pytz
 import os
 
 DB_NAME = 'trendia.db'
@@ -53,7 +53,6 @@ def setup_database():
         )
     ''')
     
-    # A coluna 'timestamp' agora é TEXT e não tem mais um valor padrão
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS search_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,6 +88,15 @@ def save_product_if_not_exists(product_dict):
     conn.commit()
     conn.close()
     return product_id
+
+def load_products_as_dict():
+    """Carrega todos os produtos do DB e retorna um dicionário com product_id como chave."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, full_data FROM products")
+    products = {row['id']: json.loads(row['full_data']) for row in cursor.fetchall()}
+    conn.close()
+    return products
 
 def add_favorite(username, product_id):
     conn = get_db_connection()
@@ -135,7 +143,7 @@ def get_all_feedback():
     cursor.execute("SELECT user_profile, product_id, action FROM feedback")
     feedback_log = cursor.fetchall()
     conn.close()
-    return feedback_log
+    return [dict(row) for row in feedback_log] # Retorna como lista de dicionários
 
 def clear_feedback_log():
     conn = get_db_connection()
@@ -145,26 +153,16 @@ def clear_feedback_log():
     conn.close()
 
 def save_search_prompt(prompt):
-    """Salva um prompt de busca com o timestamp local correto."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    # Define o fuso horário de São Paulo
     fuso_horario_brasil = pytz.timezone('America/Sao_Paulo')
-    # Pega a hora atual neste fuso horário
     agora_no_brasil = datetime.now(fuso_horario_brasil)
-    # Formata como uma string no padrão ISO 8601 (ex: '2023-10-27T10:30:00.123456-03:00')
     timestamp_str = agora_no_brasil.isoformat()
-
-    # Insere o prompt E o timestamp gerado pelo Python
     cursor.execute("INSERT INTO search_history (prompt, timestamp) VALUES (?, ?)", (prompt, timestamp_str))
-    
     conn.commit()
     conn.close()
-    print(f"Prompt '{prompt}' salvo no histórico com o horário local.")
 
 def get_search_history(limit=25):
-    """Retorna uma lista dos prompts de busca mais recentes, incluindo seus IDs."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, prompt, timestamp FROM search_history ORDER BY timestamp DESC LIMIT ?", (limit,))
@@ -173,7 +171,6 @@ def get_search_history(limit=25):
     return history
 
 def get_all_prompts_as_text():
-    """Retorna todos os prompts como um único texto para a nuvem de palavras."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT prompt FROM search_history")
@@ -182,19 +179,15 @@ def get_all_prompts_as_text():
     return all_text
 
 def delete_search_item(item_id):
-    """Deleta um item específico do histórico de buscas pelo seu ID."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM search_history WHERE id = ?", (item_id,))
     conn.commit()
     conn.close()
-    print(f"Item de histórico com ID {item_id} foi deletado.")
 
 def clear_search_history():
-    """Deleta todos os registros da tabela de histórico de buscas."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM search_history")
     conn.commit()
     conn.close()
-    print("Todo o histórico de buscas foi limpo.")
