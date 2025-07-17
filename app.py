@@ -97,17 +97,24 @@ with tab1:
                 st.markdown(f"**Cliente Ideal:** *{product.get('marketing_persona', 'N/A')}*")
                 st.markdown('<div style="margin-top: auto;"></div>', unsafe_allow_html=True)
                 
-                feedback_cols = st.columns(2)
-                if feedback_cols[0].button("👍", key=f"like_{product['title']}_{i}"):
-                    db_manager.log_feedback(product.get('product_url'), user_profile_option, 'like')
-                    st.toast("Feedback positivo registrado!", icon="😊")
+                feedback_cols = st.columns(3)
+                with feedback_cols[0]:
+                    if st.button("👍", key=f"like_{product['title']}_{i}", help="Gostei desta ideia"):
+                        db_manager.log_feedback(product.get('product_url'), user_profile_option, 'like')
+                        st.toast("Feedback positivo registrado!", icon="😊")
 
-                if feedback_cols[1].button("⭐", key=f"fav_{product['title']}_{i}"):
-                    product_id = db_manager.save_product_if_not_exists(product)
-                    db_manager.add_favorite(SHARED_USERNAME, product_id)
-                    st.session_state.user_favorites = db_manager.get_user_favorites(SHARED_USERNAME)
-                    st.toast("Salvo nos Favoritos!", icon="⭐")
-                    st.rerun()
+                with feedback_cols[1]:
+                    if st.button("👎", key=f"dislike_{product['title']}_{i}", help="Não gostei desta ideia"):
+                        db_manager.log_feedback(product.get('product_url'), user_profile_option, 'dislike')
+                        st.toast("Feedback negativo registrado.", icon="🙁")
+                
+                with feedback_cols[2]:
+                    if st.button("⭐", key=f"fav_{product['title']}_{i}", help="Salvar nos Favoritos"):
+                        product_id = db_manager.save_product_if_not_exists(product)
+                        db_manager.add_favorite(SHARED_USERNAME, product_id)
+                        st.session_state.user_favorites = db_manager.get_user_favorites(SHARED_USERNAME)
+                        st.toast("Salvo nos Favoritos!", icon="⭐")
+                        st.rerun()
                 
                 st.link_button("Buscar no Google", product.get('product_url', '#'), use_container_width=True)
     else:
