@@ -4,25 +4,33 @@ import agent_core
 import db_manager
 import learning_engine
 import os
-from wordcloud import WordCloud, STOPWORDS # Importa a lista padrão de stopwords
+from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
 import pandas as pd
-import time # Importa a biblioteca time para simular pausas
+import time
 
 # --- SETUP INICIAL ---
 st.set_page_config(page_title="TrendIA", page_icon="🚀", layout="wide")
 
+# Garante que o banco de dados e suas tabelas existam na primeira execução
 db_manager.setup_database()
+
+# Define um usuário padrão, já que removemos o sistema de login
 SHARED_USERNAME = "default_user"
 
+# --- Inicialização do Estado da Sessão ---
+# Carrega os favoritos do usuário padrão do DB para a sessão ao iniciar o app
 if 'user_favorites' not in st.session_state:
     st.session_state.user_favorites = db_manager.get_user_favorites(SHARED_USERNAME)
+# Inicializa a lista de produtos gerados
 if 'generated_products' not in st.session_state:
     st.session_state.generated_products = []
+
 
 # --- BARRA LATERAL (SIDEBAR) ---
 st.sidebar.title("🚀 TrendIA")
 st.sidebar.caption("Controles do Agente de IA")
+
 user_profile_option = st.sidebar.selectbox(
     "Selecione seu perfil de busca:",
     ("Equilibrado", "Foco em Inovação", "Foco em Custo-Benefício")
@@ -46,6 +54,7 @@ if st.sidebar.button("Atualizar Perfil com Feedbacks"):
 st.title("Gerador de Ideias de Produtos com IA")
 st.caption("Suas ideias favoritas agora ficam salvas permanentemente!")
 
+# Cria as três abas da interface
 tab1, tab2, tab3 = st.tabs([
     "💡 Gerar e Classificar", 
     f"⭐ Favoritos ({len(st.session_state.user_favorites)})", 
@@ -55,37 +64,25 @@ tab1, tab2, tab3 = st.tabs([
 # --- ABA 1: GERAR E CLASSIFICAR ---
 with tab1:
     user_prompt = st.text_input("Descreva um conceito para gerar ideias:", placeholder="Ex: 'brindes para eventos de tecnologia'")
-    
-    # <<< MUDANÇA PRINCIPAL AQUI: Implementando o st.status >>>
     if st.button("Gerar Novas Ideias", type="primary"):
         if user_prompt:
-            # Usamos st.status, que é um spinner que pode ser atualizado.
             with st.status("Iniciando a busca criativa...", expanded=True) as status:
-                
                 status.write("Passo 1: Enviando seu prompt para a IA (Gemini)...")
-                
-                # A chamada principal para o agent_core permanece a mesma
                 ranked_products = agent_core.generate_and_rank_products(user_prompt, current_weights)
                 st.session_state.generated_products = ranked_products
                 
                 if ranked_products:
-                    # Simula uma pequena pausa para dar tempo de ler a mensagem
-                    time.sleep(1) 
-                    
+                    time.sleep(1)
                     status.write("Passo 2: Analisando e organizando os resultados...")
                     db_manager.save_search_prompt(user_prompt)
                     time.sleep(1)
-                    
-                    # Atualiza o status para concluído com uma mensagem de sucesso
                     status.update(label="Busca concluída com sucesso!", state="complete", expanded=False)
                 else:
-                    # Atualiza o status para um estado de erro
                     status.update(label="Falha na geração!", state="error", expanded=True)
                     st.error("A IA não conseguiu gerar produtos. Verifique o terminal para erros ou tente um prompt diferente.")
         else:
             st.warning("Por favor, digite algo para gerar ideias.")
 
-    # O código de exibição dos resultados não precisa de alterações
     if st.session_state.generated_products:
         st.subheader("Resultados Gerados e Classificados:")
         cols = st.columns(4)
@@ -132,11 +129,13 @@ with tab2:
                 st.markdown("---")
                 st.markdown(f"**Cliente Ideal:** *{product.get('marketing_persona', 'N/A')}*")
                 st.markdown('<div style="margin-top: auto;"></div>', unsafe_allow_html=True)
+
                 if st.button("🗑️ Remover", key=f"rem_{product['title']}_{i}", use_container_width=True):
                     product_id = db_manager.save_product_if_not_exists(product)
                     db_manager.remove_favorite(SHARED_USERNAME, product_id)
                     st.session_state.user_favorites = db_manager.get_user_favorites(SHARED_USERNAME)
                     st.rerun()
+                
                 st.link_button("Buscar no Google", product.get('product_url', '#'), use_container_width=True)
     else:
         st.info("Você ainda não salvou nenhum produto.")
@@ -144,58 +143,51 @@ with tab2:
 # --- ABA 3: HISTÓRICO E TENDÊNCIAS ---
 with tab3:
     st.header("Análise de Buscas")
-    st.markdown("Veja as suas buscas mais recentes e uma nuvem de palavras com os termos mais frequentes.")
 
-    col1, col2 = st.columns([1, 2])
-
-    with col1:
+    with st.container(border=True):
         st.subheader("Histórico Recente")
-        search_history = db_manager.get_search_history(limit=15)
+        search_history = db_manager.get_search_history(limit=25)
+        
         if search_history:
-            history_df = pd.DataFrame(search_history, columns=['Busca', 'Data'])
-            history_df['Data'] = pd.to_datetime(history_df['Data']).dt.strftime('%d/%m/%Y %H:%M')
-            st.dataframe(history_df, use_container_width=True, hide_index=True)
+            for item in search_history:
+                col_text, col_button = st.columns([0.9, 0.1])
+                with col_text:
+                    timestamp = pd.to_datetime(item['timestamp']).strftime('%d/%m/%Y %H:%M')
+                    st.markdown(f"**`{item['prompt']}`** - *buscado em {timestamp}*")
+                with col_button:
+                    if st.button("🗑️", key=f"delete_history_{item['id']}", help="Excluir esta busca"):
+                        db_manager.delete_search_item(item['id'])
+                        st.toast("Busca removida do histórico!")
+                        st.rerun()
+            
+            st.divider()
+            
+            if st.button("🧹 Limpar todo o histórico", use_container_width=True, type="secondary"):
+                db_manager.clear_search_history()
+                st.toast("Histórico de buscas limpo com sucesso!")
+                st.rerun()
         else:
             st.write("Nenhuma busca no histórico ainda.")
-
-    with col2:
-        st.subheader("Nuvem de Tendências")
-        all_prompts_text = db_manager.get_all_prompts_as_text()
-
-        if all_prompts_text and all_prompts_text.strip():
-            try:
-                # 1. Pega a lista padrão de stopwords da biblioteca
-                stopwords_base = set(STOPWORDS)
-                
-                # 2. Cria sua lista personalizada de palavras a serem ignoradas
-                palavras_proibidas = {
-                    'presente', 'presentes', 'para', 'ideia', 'ideias', 
+    
+    st.subheader("Nuvem de Tendências")
+    all_prompts_text = db_manager.get_all_prompts_as_text()
+    if all_prompts_text and all_prompts_text.strip():
+        try:
+            stopwords_base = set(STOPWORDS)
+            palavras_proibidas = {
+               'presente', 'presentes', 'para', 'ideia', 'ideias', 
                     'de', 'do', 'da', 'dos', 'das', 'com', 'um', 'uma',
                     'como', 'qual', 'ser', 'produtos', 'produto', 'que',
                     'seja', 'sejam', 'comprar', 'encontrar', 'dia', 'o', 
                     'a', 'anos', 'ano'
-                }
-                
-                # 3. Combina as duas listas
-                stopwords_completas = stopwords_base.union(palavras_proibidas)
-
-                # Gera a nuvem de palavras, passando a nova lista de stopwords
-                wordcloud = WordCloud(
-                    width=800, 
-                    height=400, 
-                    background_color='white',
-                    colormap='viridis',
-                    stopwords=stopwords_completas, # <-- Parâmetro para filtrar palavras
-                    contour_width=3,
-                    contour_color='steelblue'
-                ).generate(all_prompts_text)
-
-                # Exibe a imagem da nuvem
-                fig, ax = plt.subplots(figsize=(12, 6))
-                ax.imshow(wordcloud, interpolation='bilinear')
-                ax.axis("off")
-                st.pyplot(fig)
-            except Exception as e:
-                st.error(f"Não foi possível gerar a nuvem de palavras. Erro: {e}")
-        else:
-            st.write("Faça algumas buscas para gerar a sua nuvem de tendências.")
+            }
+            stopwords_completas = stopwords_base.union(palavras_proibidas)
+            wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='viridis', stopwords=stopwords_completas).generate(all_prompts_text)
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.axis("off")
+            st.pyplot(fig)
+        except Exception as e:
+            st.error(f"Não foi possível gerar a nuvem de palavras. Erro: {e}")
+    else:
+        st.write("Faça algumas buscas para gerar a sua nuvem de tendências.")
